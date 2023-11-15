@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <style>
+    #videoContainer {
+      display: flex;
+      flex-wrap: wrap;
+      flex-grow: 100;
+    }
+
+    .videoItem {
+      width: 100%;
+      height: 200px;
+      background-color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    #loadingIndicator {
+      text-align: center;
+      margin: 20px;
+      display: none;
+    }
+
+    #completeLoaded {
+      display: none;
+      font-size: 30;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="videoContainer"></div>
+  <div id="loadingIndicator">Loading...</div>
+  <div id="completeLoaded">no more data ......</div>
+
+
+  <script>
+    const videoContainer = document.getElementById('videoContainer');
+    let isLoading = false;
+    let page = 1;
+    let totalPages1 = 1; // initially 1 
+
+    const fetchMoreVideos = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/api/posts/videos/stream?limit=10&page=${page}`);
+        if (!response.ok) {
+          console.log("🚀 ~ file: index.html:56 ~ fetchMoreVideos ~ response:", response)
+          throw new Error('Unable to fetch data');
+        }
+        const data = await response.json();
+        console.log("🚀 ~ file: index.html:60 ~ fetchMoreVideos ~ data:", data)
+        totalPages1 = data.totalPages;
+        page++;
+        return data;
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        return [];
+      }
+    };
+
+    const renderVideos = async () => {
+      if (isLoading || page > totalPages1) return;
+      const loadingIndicator = document.getElementById('loadingIndicator');
+      const videoContainer = document.getElementById('videoContainer');
+
+      const bottomOffset = 100;
+      const isNearBottom = window.innerHeight + window.scrollY + bottomOffset >= document.body.offsetHeight;
+
+      if (isNearBottom) {
+        isLoading = true;
+        loadingIndicator.style.display = 'block';
+
+        try {
+          const newVideos = await fetchMoreVideos();
+          console.log("🚀 ~ renderVideos ~ newVideos:", newVideos)
+          newVideos.docs.forEach((video) => {
+            const videoItem = document.createElement('iframe');
+            videoItem.classList.add('videoItem');
+            videoItem.src = video.url;
+            videoItem.allowFullscreen = true;
+            videoContainer.appendChild(videoItem);
+          });
+        } catch (error) {
+          console.error('Error rendering videos:', error);
+        } finally {
+          isLoading = false;
+          loadingIndicator.style.display = 'none';
+        }
+      }
+    };
+
+    window.onscroll = () => {
+      if (!isLoading && page <= totalPages1) {
+        renderVideos();
+      } else if (page > totalPages1) {
+        const completeIndicator = document.getElementById('completeLoaded');
+        completeIndicator.style.display = 'block';
+      }
+    };
+
+    renderVideos();
+  </script>
+
+</body>
+
+</html>
